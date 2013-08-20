@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="hello">Hello World, AndroidCommunicationSpeedTestActivity!</string>
+    <string name="app_name">Speed Test External</string>
+    <string name="readme">This application is used for communication speed test. \n
+        Operation steps:\n
+        1. One choose SERVER and others choose CLIENT. After choose, it will turn to speed test activity.\n
+        2. Server input test speed and click Start button, Client click Start button. If everything is OK, the speed is shown\n	</string>
+
+</resources>

@@ -1,0 +1,25 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <EditText
+        android:id="@+id/etSpeedTest"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Please input data size of one time, (byte)"
+        android:inputType="number" />
+
+    <TextView
+        android:id="@+id/tvSpeedTestSpeed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/btnSpeedTestStart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start" />
+
+</LinearLayout>
