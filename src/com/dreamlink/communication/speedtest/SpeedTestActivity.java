@@ -2,7 +2,7 @@ package com.dreamlink.communication.speedtest;
 
 import java.text.DecimalFormat;
 
-import com.dreamlink.communication.api.AppUtil;
+import com.dreamlink.communication.lib.util.AppUtil;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -10,7 +10,17 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class AndroidCommunicationSpeedTestActivity extends Activity {
+/**
+ * This class is used for communication speed test.</br>
+ * 
+ * Server send byte[] to clients</br>
+ * 
+ * The byte[] size of one time communication is set by user.</br>
+ * 
+ * Calculate the transport speed every 1 second.</br>
+ * 
+ */
+public class SpeedTestActivity extends Activity {
 	public static final String EXTRA_APP_ID = "app_id";
 
 	@Override

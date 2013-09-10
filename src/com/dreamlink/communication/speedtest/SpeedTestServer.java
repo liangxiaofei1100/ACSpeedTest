@@ -3,16 +3,17 @@ package com.dreamlink.communication.speedtest;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.dreamlink.communication.aidl.User;
+import com.dreamlink.communication.lib.CommunicationManager;
+import com.dreamlink.communication.lib.CommunicationManager.OnCommunicationListener;
+import com.dreamlink.communication.lib.CommunicationManager.OnConnectionChangeListener;
+import com.dreamlink.communication.lib.util.Notice;
+
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Message;
-import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -20,17 +21,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import com.dreamlink.aidl.Communication;
-import com.dreamlink.aidl.OnCommunicationListenerExternal;
-import com.dreamlink.aidl.User;
-import com.dreamlink.communication.api.CommunicateService;
-import com.dreamlink.communication.api.Notice;
-
 /**
- * see {@code SpeedTest}.
+ * see {@code SpeedTestActivity}.
  * 
  */
-public class SpeedTestServer extends Activity {
+public class SpeedTestServer extends Activity implements
+		OnCommunicationListener, OnConnectionChangeListener {
 	private static final String TAG = "SpeedTestServer";
 	private Notice mNotice;
 	private TextView mSpeedTextView;
@@ -53,15 +49,16 @@ public class SpeedTestServer extends Activity {
 		super.onCreate(savedInstanceState);
 
 		Intent intent = getIntent();
-		mAppID = intent.getIntExtra(
-				AndroidCommunicationSpeedTestActivity.EXTRA_APP_ID, 0);
+		mAppID = intent.getIntExtra(SpeedTestActivity.EXTRA_APP_ID, 0);
 
 		setContentView(R.layout.test_speed);
 		initView();
 		mNotice = new Notice(this);
 
 		// Connect to Communication Service.
-		connectCommunicationService();
+		mCommunicationManager = new CommunicationManager(
+				getApplicationContext());
+		mCommunicationManager.connectCommunicatonService(this, this, mAppID);
 
 		mStop = false;
 		mIsStarted = false;
@@ -91,12 +88,7 @@ public class SpeedTestServer extends Activity {
 	}
 
 	private void startTest(int size) {
-		int userNumber = 0;
-		try {
-			userNumber = mCommunication.getAllUser().size();
-		} catch (RemoteException e) {
-			e.printStackTrace();
-		}
+		int userNumber = mCommunicationManager.getAllUser().size();
 
 		if (userNumber > 0) {
 			Log.d(TAG, "start Test");
@@ -132,11 +124,11 @@ public class SpeedTestServer extends Activity {
 
 			mStartTime = System.currentTimeMillis();
 			while (!mStop) {
-				try {
-					mCommunication.sendMessage(mData, mAppID, null);
+				if (mCommunicationManager.sendMessageToAll(mData)) {
 					mTotalSize += mSize;
-				} catch (RemoteException e) {
-					e.printStackTrace();
+				} else {
+					Log.e(TAG, "sendMessageToAll error.");
+					break;
 				}
 			}
 		}
@@ -144,76 +136,56 @@ public class SpeedTestServer extends Activity {
 
 	Handler mHandler = new Handler() {
 		public void handleMessage(android.os.Message msg) {
-			mSpeedTextView.setText(AndroidCommunicationSpeedTestActivity
-					.getSpeedText(mTotalSize, mStartTime));
+			mSpeedTextView.setText(SpeedTestActivity.getSpeedText(mTotalSize,
+					mStartTime));
 		};
 	};
 
 	@Override
 	protected void onDestroy() {
-		super.onDestroy();
 		mStop = true;
 		if (mShowSpeedTimer != null) {
 			mShowSpeedTimer.cancel();
 			mShowSpeedTimer = null;
 		}
+		mCommunicationManager.disconnectCommunicationService();
+		super.onDestroy();
 	}
 
 	// Communication Service begin
-	private Communication mCommunication;
+	private CommunicationManager mCommunicationManager;
 
-	private boolean connectCommunicationService() {
-		ServiceConnection connection = new ServiceConnection() {
+	@Override
+	public void onCommunicationDisconnected() {
+		// TODO Auto-generated method stub
 
-			public void onServiceDisconnected(ComponentName name) {
-				try {
-					mCommunication
-							.unRegistListenr(mCommunicationListenerExternal);
-				} catch (RemoteException e) {
-					e.printStackTrace();
-				}
-
-			}
-
-			public void onServiceConnected(ComponentName name, IBinder service) {
-				mCommunication = Communication.Stub.asInterface(service);
-				try {
-					mCommunication.registListenr(
-							mCommunicationListenerExternal, mAppID);
-				} catch (RemoteException e) {
-					e.printStackTrace();
-				}
-			}
-		};
-		Intent communicateIntent = new Intent(
-				CommunicateService.ACTION_COMMUNICATE_SERVICE);
-		return bindService(communicateIntent, connection,
-				Context.BIND_AUTO_CREATE);
 	}
 
-	private OnCommunicationListenerExternal mCommunicationListenerExternal = new OnCommunicationListenerExternal.Stub() {
+	@Override
+	public void onCommunicationConnected() {
+		// TODO Auto-generated method stub
 
-		@Override
-		public void onUserDisconnected(User user) throws RemoteException {
-			// TODO Auto-generated method stub
+	}
 
-		}
+	@Override
+	public void onReceiveMessage(byte[] msg, User sendUser) {
+		Log.d(TAG, "onReceiveMessage:" + String.valueOf(msg));
+		Message message = mHandler.obtainMessage();
+		message.obj = new String(msg);
+		mHandler.sendMessage(message);
+	}
 
-		@Override
-		public void onUserConnected(User user) throws RemoteException {
-			// TODO Auto-generated method stub
+	@Override
+	public void onUserConnected(User user) {
+		// TODO Auto-generated method stub
 
-		}
+	}
 
-		@Override
-		public void onReceiveMessage(byte[] msg, User sendUser)
-				throws RemoteException {
-			Log.d(TAG, "onReceiveMessage:" + String.valueOf(msg));
-			Message message = mHandler.obtainMessage();
-			message.obj = new String(msg);
-			mHandler.sendMessage(message);
+	@Override
+	public void onUserDisconnected(User user) {
+		// TODO Auto-generated method stub
 
-		}
-	};
+	}
 	// Communication Service end
+
 }

@@ -3,30 +3,27 @@ package com.dreamlink.communication.speedtest;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.dreamlink.communication.aidl.User;
+import com.dreamlink.communication.lib.CommunicationManager;
+import com.dreamlink.communication.lib.CommunicationManager.OnCommunicationListener;
+import com.dreamlink.communication.lib.CommunicationManager.OnConnectionChangeListener;
+
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
-import android.os.RemoteException;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import com.dreamlink.aidl.Communication;
-import com.dreamlink.aidl.OnCommunicationListenerExternal;
-import com.dreamlink.aidl.User;
-import com.dreamlink.communication.api.CommunicateService;
-
 /**
- * see {@code SpeedTest}.
+ * see {@code SpeedTestActivity}.
  * 
  */
-public class SpeedTestClient extends Activity {
+public class SpeedTestClient extends Activity implements
+		OnCommunicationListener, OnConnectionChangeListener {
+	@SuppressWarnings("unused")
 	private static final String TAG = "SpeedTestClient";
 	private TextView mSpeedTextView;
 	private EditText mSizeEditText;
@@ -44,14 +41,15 @@ public class SpeedTestClient extends Activity {
 		super.onCreate(savedInstanceState);
 
 		Intent intent = getIntent();
-		mAppID = intent.getIntExtra(
-				AndroidCommunicationSpeedTestActivity.EXTRA_APP_ID, 0);
+		mAppID = intent.getIntExtra(SpeedTestActivity.EXTRA_APP_ID, 0);
 
 		setContentView(R.layout.test_speed);
 		initView();
 
 		// Connect to Communication Service.
-		connectCommunicationService();
+		mCommunicationManager = new CommunicationManager(
+				getApplicationContext());
+		mCommunicationManager.connectCommunicatonService(this, this, mAppID);
 	}
 
 	private void initView() {
@@ -80,72 +78,51 @@ public class SpeedTestClient extends Activity {
 
 	Handler mHandler = new Handler() {
 		public void handleMessage(android.os.Message msg) {
-			mSpeedTextView.setText(AndroidCommunicationSpeedTestActivity
-					.getSpeedText(mTotalSize, mStartTime));
+			mSpeedTextView.setText(SpeedTestActivity.getSpeedText(mTotalSize,
+					mStartTime));
 		};
 	};
 
 	@Override
 	protected void onDestroy() {
-		super.onDestroy();
+		mCommunicationManager.disconnectCommunicationService();
 		if (mShowSpeedTimer != null) {
 			mShowSpeedTimer.cancel();
 			mShowSpeedTimer = null;
 		}
+		super.onDestroy();
 	}
 
 	// Communication Service begin
-	private Communication mCommunication;
+	private CommunicationManager mCommunicationManager;
 
-	private boolean connectCommunicationService() {
-		ServiceConnection connection = new ServiceConnection() {
+	@Override
+	public void onCommunicationDisconnected() {
+		// TODO Auto-generated method stub
 
-			public void onServiceDisconnected(ComponentName name) {
-				try {
-					mCommunication
-							.unRegistListenr(mCommunicationListenerExternal);
-				} catch (RemoteException e) {
-					e.printStackTrace();
-				}
-
-			}
-
-			public void onServiceConnected(ComponentName name, IBinder service) {
-				mCommunication = Communication.Stub.asInterface(service);
-				try {
-					mCommunication.registListenr(
-							mCommunicationListenerExternal, mAppID);
-				} catch (RemoteException e) {
-					e.printStackTrace();
-				}
-			}
-		};
-		Intent communicateIntent = new Intent(
-				CommunicateService.ACTION_COMMUNICATE_SERVICE);
-		return bindService(communicateIntent, connection,
-				Context.BIND_AUTO_CREATE);
 	}
 
-	private OnCommunicationListenerExternal mCommunicationListenerExternal = new OnCommunicationListenerExternal.Stub() {
+	@Override
+	public void onCommunicationConnected() {
+		// TODO Auto-generated method stub
 
-		@Override
-		public void onUserDisconnected(User user) throws RemoteException {
-			// TODO Auto-generated method stub
+	}
 
-		}
+	@Override
+	public void onReceiveMessage(byte[] msg, User sendUser) {
+		mTotalSize += msg.length;
+	}
 
-		@Override
-		public void onUserConnected(User user) throws RemoteException {
-			// TODO Auto-generated method stub
+	@Override
+	public void onUserConnected(User user) {
+		// TODO Auto-generated method stub
 
-		}
+	}
 
-		@Override
-		public void onReceiveMessage(byte[] msg, User sendUser)
-				throws RemoteException {
-			mTotalSize += msg.length;
-		}
-	};
+	@Override
+	public void onUserDisconnected(User user) {
+		// TODO Auto-generated method stub
+
+	}
 	// Communication Service end
-
 }
